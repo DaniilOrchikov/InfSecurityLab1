@@ -1,0 +1,54 @@
+name: CI-Security-Pipeline
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  security:
+    name: SAST + SCA
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        cache: "pip"
+
+    - name: Install prod deps
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install dev / scanner deps
+      run: |
+        pip install -r requirements-dev.txt
+
+    # -------------------- SAST (Bandit) --------------------
+    - name: Run Bandit SAST scan
+      run: |
+        bandit -r . -f sarif -o bandit.sarif
+    - name: Upload Bandit SARIF to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: bandit.sarif
+
+    # -------------------- SCA (Safety) --------------------
+    - name: Run Safety dependency scan
+      id: safety
+      run: |
+        # --continue-on-error=false → упадёт, если найдёт HIGH/CRITICAL
+        safety check --full-report --output text \
+                     --fail-on  high,critical \
+                     > safety_report.txt
+    - name: Upload Safety report as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: safety-report
+        path: safety_report.txt
