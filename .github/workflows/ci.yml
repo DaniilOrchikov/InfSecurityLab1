@@ -27,15 +27,20 @@ jobs:
         pip install -r requirements.txt
 
     # ---------------- Установка сканеров ----------------
-    - name: Install security tooling (Bandit-SARIF & Safety)
+    - name: Install security tooling (Bandit JSON + Safety + SARIF converter)
       run: |
-        # Bandit >=1.7.7 уже умеет SARIF
-        pip install "bandit>=1.7.7" safety
+        pip install "bandit>=1.7.7" safety bandit-sarif-formatter
+        python -c "import bandit, sys; print('Bandit version:', bandit.__version__)"
+        bandit --version
 
     # -------------------- SAST (Bandit) --------------------
-    - name: Run Bandit SAST scan (SARIF output)
+    - name: Run Bandit SAST scan (JSON output)
       run: |
-        bandit -r . -f sarif -o bandit.sarif
+        bandit -r . -f json -o bandit.json
+
+    - name: Convert Bandit JSON to SARIF
+      run: |
+        bandit-sarif-formatter bandit.json > bandit.sarif
 
     - name: Upload Bandit SARIF to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
