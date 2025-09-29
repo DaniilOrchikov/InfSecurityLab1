@@ -21,19 +21,22 @@ jobs:
         python-version: "3.11"
         cache: "pip"
 
-    - name: Install prod deps
+    - name: Upgrade pip + install prod deps
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install dev / scanner deps
+    # ---------------- Установка сканеров ----------------
+    - name: Install security tooling (Bandit-SARIF & Safety)
       run: |
-        pip install -r requirements-dev.txt
+        # Bandit >=1.7.7 уже умеет SARIF
+        pip install "bandit>=1.7.7" safety
 
     # -------------------- SAST (Bandit) --------------------
-    - name: Run Bandit SAST scan
+    - name: Run Bandit SAST scan (SARIF output)
       run: |
         bandit -r . -f sarif -o bandit.sarif
+
     - name: Upload Bandit SARIF to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v2
       with:
@@ -43,10 +46,11 @@ jobs:
     - name: Run Safety dependency scan
       id: safety
       run: |
-        # --continue-on-error=false → упадёт, если найдёт HIGH/CRITICAL
-        safety check --full-report --output text \
-                     --fail-on  high,critical \
+        safety check --full-report \
+                     --output text \
+                     --fail-on high,critical \
                      > safety_report.txt
+
     - name: Upload Safety report as artifact
       uses: actions/upload-artifact@v4
       with:
