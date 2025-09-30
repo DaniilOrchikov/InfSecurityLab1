@@ -72,7 +72,7 @@ jobs:
       - name: Run Safety SCA Scan and generate HTML
         run: |
           pip install safety
-          safety check --output html --save-as safety-report.html
+          safety check --save-html safety-report.html
         continue-on-error: true
 
       - name: Upload Safety HTML Report
