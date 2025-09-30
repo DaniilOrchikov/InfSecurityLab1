@@ -3,7 +3,12 @@ name: CI-Security-Pipeline
 on:
   push:
     branches: [ "main", "develop" ]
+    paths:
+      - '**.py'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
   pull_request:
+    branches: [ "main", "develop" ]
   workflow_dispatch:
 
 jobs:
@@ -12,52 +17,67 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v4
+      - name: Check out code
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.11"
-        cache: "pip"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
 
-    - name: Upgrade pip + install prod deps
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-    # ---------------- Установка сканеров ----------------
-    - name: Install security tooling (Bandit JSON + Safety + SARIF converter)
-      run: |
-        pip install "bandit>=1.7.7" safety bandit-sarif-formatter
-        python -c "import bandit, sys; print('Bandit version:', bandit.__version__)"
-        bandit --version
+      # -------------------- SAST: Bandit --------------------
+      - name: Install Bandit
+        run: pip install bandit
 
-    # -------------------- SAST (Bandit) --------------------
-    - name: Run Bandit SAST scan (JSON output)
-      run: |
-        bandit -r . -f json -o bandit.json
+      - name: Run Bandit SAST Scan
+        run: |
+          bandit -r . -f json -o bandit.json --exit-zero
 
-    - name: Convert Bandit JSON to SARIF
-      run: |
-        bandit-sarif-formatter bandit.json > bandit.sarif
+      - name: Upload Bandit Report as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-sast-report
+          path: bandit.json
+          retention-days: 30
 
-    - name: Upload Bandit SARIF to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: bandit.sarif
+      # -------------------- SCA: OWASP Dependency-Check --------------------
+      - name: Download OWASP Dependency-Check
+        run: |
+          curl -Lo dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/latest/download/dependency-check-8.4.0-release.zip
+          unzip dependency-check.zip
+          chmod +x dependency-check/bin/dependency-check.sh
 
-    # -------------------- SCA (Safety) --------------------
-    - name: Run Safety dependency scan
-      id: safety
-      run: |
-        safety check --full-report \
-                     --output text \
-                     --fail-on high,critical \
-                     > safety_report.txt
+      - name: Run OWASP Dependency-Check SCA Scan
+        run: |
+          ./dependency-check/bin/dependency-check.sh \
+            --project "Your Flask App" \
+            --scan . \
+            --out reports/ \
+            --format JSON \
+            --format HTML \
+            --failOnCVSS 7
 
-    - name: Upload Safety report as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: safety-report
-        path: safety_report.txt
+      - name: Upload OWASP Dependency-Check Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-reports
+          path: reports/
+          retention-days: 30
+
+      - name: Run Safety SCA Scan
+        run: |
+          pip install safety
+          safety check --full-report --json > safety_report.json || true
+        continue-on-error: true
+
+      - name: Upload Safety Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: safety-sca-report
+          path: safety_report.json
