@@ -62,7 +62,7 @@ jobs:
       - name: Run Safety SCA Scan
         run: |
           pip install safety
-          safety check --full-report --json > safety_report.json
+          safety check --json > safety_report.json
         continue-on-error: true
 
       - name: Upload Safety Report
