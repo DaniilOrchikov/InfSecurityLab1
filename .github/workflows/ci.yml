@@ -3,10 +3,6 @@ name: CI-Security-Pipeline
 on:
   push:
     branches: [ "main", "develop" ]
-    paths:
-      - '**.py'
-      - 'requirements.txt'
-      - '.github/workflows/ci.yml'
   pull_request:
     branches: [ "main", "develop" ]
   workflow_dispatch:
@@ -50,15 +46,18 @@ jobs:
       - name: Download OWASP Dependency-Check
         run: |
           curl -Lo dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
-          unzip dependency-check.zip
+          unzip -q dependency-check.zip
           chmod +x dependency-check/bin/dependency-check.sh
+
+      - name: Create reports directory
+        run: mkdir -p reports
 
       - name: Run OWASP Dependency-Check SCA Scan
         run: |
           ./dependency-check/bin/dependency-check.sh \
-            --project "Your Flask App" \
+            --project "Flask App" \
             --scan . \
-            --out reports/ \
+            --out ./reports/ \
             --format JSON \
             --format HTML \
             --failOnCVSS 7
