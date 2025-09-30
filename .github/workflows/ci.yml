@@ -31,42 +31,53 @@ jobs:
       - name: Install Bandit
         run: pip install bandit
 
-      - name: Run Bandit SAST Scan
+      - name: Run Bandit SAST Scan and generate HTML
         run: |
-          bandit -r . -f json -o bandit.json --exit-zero
+          bandit -r . -f html -o bandit-report.html --exit-zero
 
-      - name: Upload Bandit Report as Artifact
+      - name: Upload Bandit HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: bandit-sast-report
-          path: bandit.json
+          name: bandit-html-report
+          path: bandit-report.html
           retention-days: 30
 
       # -------------------- SCA: Snyk --------------------
-      - name: Run Snyk SCA Scan
+      - name: Run Snyk SCA Scan to JSON
         uses: snyk/actions/python@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --json-file-output=snyk-report.json --fail-on=all
+          args: --json-file-output=snyk-report.json
         continue-on-error: true
 
-      - name: Upload Snyk Report
+      - name: Setup Node.js for Snyk HTML converter
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Convert Snyk JSON to HTML
+        run: |
+          npx snyk-to-html@latest -i snyk-report.json -o snyk-report.html
+        continue-on-error: true
+
+      - name: Upload Snyk HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: snyk-sca-report
-          path: snyk-report.json
+          name: snyk-html-report
+          path: snyk-report.html
           retention-days: 30
 
       # -------------------- SCA: Safety --------------------
-      - name: Run Safety SCA Scan
+      - name: Run Safety SCA Scan and generate HTML
         run: |
           pip install safety
-          safety check --json > safety_report.json
+          safety check --html safety-report.html
         continue-on-error: true
 
-      - name: Upload Safety Report
+      - name: Upload Safety HTML Report
         uses: actions/upload-artifact@v4
         with:
-          name: safety-sca-report
-          path: safety_report.json
+          name: safety-html-report
+          path: safety-report.html
+          retention-days: 30
