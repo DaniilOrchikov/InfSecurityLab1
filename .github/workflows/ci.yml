@@ -44,11 +44,11 @@ jobs:
 
       # -------------------- SCA: Snyk --------------------
       - name: Run Snyk SCA Scan
-        uses: snyk/actions/setup@master
-        with:
-          args: --json-file-output=snyk-report.json --fail-on=all
+        uses: snyk/actions/python@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --json-file-output=snyk-report.json --fail-on=all
         continue-on-error: true
 
       - name: Upload Snyk Report
@@ -62,7 +62,7 @@ jobs:
       - name: Run Safety SCA Scan
         run: |
           pip install safety
-          safety check --full-report --json > safety_report.json || true
+          safety check --full-report --json > safety_report.json
         continue-on-error: true
 
       - name: Upload Safety Report
