@@ -42,33 +42,23 @@ jobs:
           path: bandit.json
           retention-days: 30
 
-      # -------------------- SCA: OWASP Dependency-Check --------------------
-      - name: Download OWASP Dependency-Check
-        run: |
-          curl -Lo dependency-check.zip https://github.com/jeremylong/DependencyCheck/releases/download/v12.1.0/dependency-check-12.1.0-release.zip
-          unzip -q dependency-check.zip
-          chmod +x dependency-check/bin/dependency-check.sh
+      # -------------------- SCA: Snyk --------------------
+      - name: Run Snyk SCA Scan
+        uses: snyk/actions/setup@master
+        with:
+          args: --json-file-output=snyk-report.json --fail-on=all
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
 
-      - name: Create reports directory
-        run: mkdir -p reports
-
-      - name: Run OWASP Dependency-Check SCA Scan
-        run: |
-          ./dependency-check/bin/dependency-check.sh \
-            --project "Flask App" \
-            --scan . \
-            --out ./reports/ \
-            --format JSON \
-            --format HTML \
-            --failOnCVSS 7
-
-      - name: Upload OWASP Dependency-Check Reports
+      - name: Upload Snyk Report
         uses: actions/upload-artifact@v4
         with:
-          name: owasp-dependency-check-reports
-          path: reports/
+          name: snyk-sca-report
+          path: snyk-report.json
           retention-days: 30
 
+      # -------------------- SCA: Safety --------------------
       - name: Run Safety SCA Scan
         run: |
           pip install safety
