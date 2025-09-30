@@ -3,10 +3,3 @@ Flask~=3.1.2
 Flask-Bcrypt~=1.0.1
 Flask-JWT-Extended~=4.7.1
 python-dotenv~=1.1.1
-
-bandit>=1.8.6
-safety>=3.2.8
-pytest>=7.4.2
-pytest-cov>=4.1.0
-flake8>=6.1.0
-black>=23.9.1
