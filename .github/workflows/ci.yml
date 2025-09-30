@@ -69,10 +69,11 @@ jobs:
           retention-days: 30
 
       # -------------------- SCA: Safety --------------------
-      - name: Run Safety SCA Scan and generate HTML
-        run: |
-          pip install safety
-          safety check --save-html safety-report.html
+      - name: Run Safety CLI to check for vulnerabilities
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
+          args: --save-html safety-report.html
         continue-on-error: true
 
       - name: Upload Safety HTML Report
